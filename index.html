@@ -398,15 +398,40 @@
   }
   // Guarantee ≥1 anagram in each draw of 5
   function samplePuzzlesFrom(bankId){
-    const pool = (BANKS[bankId] || []).slice();
-    if (!pool.length) return [];
-    const anas   = pool.filter(q => q.type === 'anagram');
-    const others = pool.filter(q => q.type !== 'anagram');
-    if (anas.length === 0) return shuffle(pool).slice(0, PUZZLES_PER_RUN);
-    const pickOne = anas[Math.floor(Math.random() * anas.length)];
-    const restPool = shuffle([...others, ...anas.filter(a => a !== pickOne)]);
-    const take = [pickOne, ...restPool.slice(0, Math.max(0, PUZZLES_PER_RUN - 1))];
-    return shuffle(take);
+  const pool = (BANKS[bankId] || []).slice();
+  if (!pool.length) return [];
+
+  const anas   = pool.filter(q => q.type === 'anagram');
+  const others = pool.filter(q => q.type !== 'anagram');
+
+  // No anagrams in this bank → plain random 5
+  if (anas.length === 0) return shuffle(pool).slice(0, PUZZLES_PER_RUN);
+
+  // Cap anagrams at 2, but ensure at least 1 if available
+  const anaPick = shuffle(anas).slice(0, Math.min(2, anas.length));
+  const othersNeeded = Math.max(0, PUZZLES_PER_RUN - anaPick.length);
+  let take = [...anaPick, ...shuffle(others).slice(0, othersNeeded)];
+
+  // Fallbacks to guarantee 5 cards:
+  if (take.length < PUZZLES_PER_RUN){
+    // Try unused non-anagrams first
+    const remainingOthers = others.filter(x => !take.includes(x));
+    take = take.concat(shuffle(remainingOthers).slice(0, PUZZLES_PER_RUN - take.length));
+  }
+  if (take.length < PUZZLES_PER_RUN){
+    // Absolute last resort: top up from any remaining items.
+    // May exceed the 2-anagram cap only if the bank lacks enough non-anagram items.
+    const remainingAny = pool.filter(x => !take.includes(x));
+    const extra = shuffle(remainingAny).slice(0, PUZZLES_PER_RUN - take.length);
+    if (extra.some(q => q.type === 'anagram') && anaPick.length + extra.filter(q=>q.type==='anagram').length > 2){
+      console.warn('[EscapeRoom] Needed to exceed 2 anagrams to reach 5 puzzles (limited bank variety).');
+    }
+    take = take.concat(extra);
+  }
+
+  return shuffle(take);
+}
+
   }
   function newWordFor(bankId){
     const list = WORDS[bankId] && WORDS[bankId].length ? WORDS[bankId] : ALL_WORDS;
