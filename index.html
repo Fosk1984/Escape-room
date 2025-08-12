@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MSK Anatomy Escape room</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080a12; --bg2:#0c1222; --card:#121a32; --border:#243158;
+    --muted:#9aa4bf; --ink:#eaf0ff; --ok:#33d17a; --bad:#ff6b6b;
+    --acc1:#8b7cff; --acc2:#00d1ff; --acc3:#ffc36b;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color:var(--ink); background: radial-gradient(1200px 600px at 30% -10%, #13204a 0%, transparent 60%) , linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:24px}
+  header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px;}
+  .brand{font-weight:800; letter-spacing:.4px}
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--border);
+    background:linear-gradient(180deg,#0d1330,#0a1026); border-radius:999px; color:var(--muted); font-size:14px;
+  }
+  .btn{
+    border:1px solid var(--border); background:linear-gradient(180deg,#1b2652,#131d3d);
+    color:var(--ink); padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow:var(--shadow);
+    transition:transform .06s ease, filter .06s ease; user-select:none;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.5; cursor:not-allowed; filter:grayscale(1)}
+  main{
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+    border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:24px; min-height:68vh;
+  }
+  h1{margin:0 0 8px; font-size:clamp(22px,3vw,28px)}
+  h2{margin:0 0 12px; font-size:clamp(18px,2.4vw,22px)}
+  p{color:#c9d3ff}
+  .grid{display:grid; gap:16px}
+  .welcome{grid-template-columns:1.1fr .9fr}
+  .card{border:1px solid var(--border); border-radius:var(--radius); background:linear-gradient(180deg,#101937,#0d1530); padding:20px;}
+  label{display:block; font-weight:700; margin:8px 0 6px}
+  select, input[type="text"]{width:100%; padding:12px; border-radius:10px; border:1px solid var(--border); background:#0c1532; color:var(--ink);}
+  .mcq .opt{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; margin:6px 0; cursor:pointer}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  .spaced{display:flex; justify-content:space-between; align-items:center; gap:12px}
+  .timer{font-variant-numeric:tabular-nums; font-weight:800}
+  .msg{padding:10px 12px; border-radius:10px; font-weight:600}
+  .good{background:rgba(51,209,122,.12); border:1px solid rgba(51,209,122,.35); color:#bdf8d6}
+  .bad{background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.35); color:#ffd5d5}
+  .hint{background:rgba(255,195,107,.12); border:1px solid rgba(255,195,107,.35); color:#ffe8c9}
+  .center{display:grid; place-items:center; min-height:50vh}
+  .padlock input{letter-spacing:.3em; text-transform:uppercase; text-align:center; font-weight:800; font-size:22px}
+  .footer{margin-top:18px; color:var(--muted); font-size:13px}
+  .muter{border-radius:999px}
+  .letterFlash{position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.35); z-index:50; animation:fadeOut .35s ease 2.65s forwards}
+  .letterFlash .bubble{font-size:clamp(3rem,12vw,7rem); font-weight:900; padding:22px 34px; border-radius:22px; background:linear-gradient(135deg,var(--acc2),var(--acc1)); color:#071322; box-shadow:var(--shadow); border:1px solid var(--border)}
+  @keyframes fadeOut{to{opacity:0}}
+  .lockedNote{padding:14px 16px; background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.35); border-radius:12px; color:#ffd5d5}
+  @media (max-width:900px){ .welcome{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="row">
+        <div class="brand pill">🩻 MSK Anatomy Escape room</div>
+        <div class="pill"><strong>Timer:</strong> <span id="time" class="timer">10:00</span></div>
+        <div class="pill"><strong>Bank:</strong> <span id="bankName">—</span></div>
+      </div>
+      <button id="mute" class="btn muter" aria-pressed="false" title="Mute / Unmute">🔊 Sound</button>
+    </header>
+
+    <main id="app">
+      <!-- WELCOME -->
+      <section id="screen-welcome">
+        <div class="grid welcome">
+          <div class="card">
+            <h1>Welcome to the MSK Anatomy Escape room</h1>
+            <p>Answer 5 anatomy challenges to earn 5 letters. Combine them into the secret 5-letter word to escape. You have <strong>10 minutes</strong>. Each question allows <strong>3 attempts</strong> — three strikes and the game <em>locks</em>.</p>
+            <div class="grid" style="grid-template-columns:1fr 1fr">
+              <div>
+                <label for="bank">Select anatomy bank</label>
+                <select id="bank">
+                  <option value="random">Random (any bank)</option>
+                  <option value="shoulder">Shoulder</option>
+                  <option value="elbow">Elbow / Forearm</option>
+                  <option value="wrist">Wrist / Hand</option>
+                  <option value="knee">Knee</option>
+                  <option value="ankle">Ankle / Foot</option>
+                  <option value="hip">Hip / Pelvis</option>
+                  <option value="hernia">Hip / Groin Hernias</option>
+                </select>
+              </div>
+              <div>
+                <label>Duration</label>
+                <div class="pill">Fixed at <strong>10:00</strong></div>
+              </div>
+            </div>
+            <div class="footer">Optional track: add <code>assets/audio/creepy.mp3</code> (royalty-free). Otherwise a built-in tense synth plays.</div>
+          </div>
+          <div class="card">
+            <h2>How it works</h2>
+            <ul>
+              <li>Each run draws five random questions from a larger pool (guaranteed ≥1 <b>anagram</b>).</li>
+              <li>Every correct answer reveals a letter for 3 seconds.</li>
+              <li>Assemble the final 5-letter word to unlock the padlock.</li>
+              <li>Time expires or 3 wrong tries on a card ⇒ hard lock.</li>
+            </ul>
+            <div class="center">
+              <button id="start" class="btn" style="font-size:18px;padding:14px 22px">Start the challenge</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PUZZLE -->
+      <section id="screen-puzzle" style="display:none">
+        <div class="card">
+          <div class="spaced">
+            <h2 id="pTitle">Card</h2>
+            <div class="pill"><span id="progress">1 / 5</span></div>
+          </div>
+          <div id="pBody" class="grid"></div>
+          <div id="pFeedback" style="margin-top:12px"></div>
+          <div class="spaced" style="margin-top:12px">
+            <div class="muted">Attempts left: <strong id="attemptsLeft">3</strong></div>
+            <div class="row">
+              <button id="submit" class="btn">Check answer</button>
+              <button id="next" class="btn" style="display:none">Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PADLOCK -->
+      <section id="screen-padlock" class="padlock" style="display:none">
+        <div class="card center" style="min-height:52vh">
+          <div style="max-width:520px; text-align:center">
+            <h2>Enter the secret 5-letter word</h2>
+            <p class="muted">(Letters are shown after each correct answer. No recap here!)</p>
+            <input id="code" maxlength="5" class="btn" style="width:260px; padding:14px" placeholder="ABCDE" autocomplete="off" />
+            <div class="row" style="justify-content:center; margin-top:12px">
+              <button id="unlock" class="btn">Unlock</button>
+              <button id="restart1" class="btn">Restart</button>
+            </div>
+            <div id="padMsg" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SUCCESS -->
+      <section id="screen-success" style="display:none">
+        <div class="card center" style="min-height:52vh">
+          <div style="max-width:520px; text-align:center">
+            <h2>✅ Escaped!</h2>
+            <p>Nicely done. You cracked it with <span id="timeLeft"></span> left.</p>
+            <button id="playAgain" class="btn">Play again</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOCKED -->
+      <section id="screen-locked" style="display:none">
+        <div class="card center" style="min-height:52vh">
+          <div style="max-width:520px; text-align:center">
+            <h2>🔒 Game Over</h2>
+            <p id="lockReason" class="lockedNote">The game is locked.</p>
+            <button id="restart2" class="btn" style="margin-top:12px">Restart</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Optional external track -->
+  <audio id="bgm" src="assets/audio/creepy.mp3" preload="auto" loop style="display:none"></audio>
+
+<script>
+(()=>{ 'use strict';
+
+  /* ========= Utilities ========= */
+  const qs  = (s,el=document)=>el.querySelector(s);
+  const qsa = (s,el=document)=>Array.from(el.querySelectorAll(s));
+  const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  const shuffle = (arr)=>{ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
+  const normalize = s => (s||'').toString().trim().toLowerCase().replace(/[\s\-_.,/\\]+/g,'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+
+  /* ========= Config ========= */
+  const PUZZLES_PER_RUN = 5;
+  const LETTER_SHOW_MS  = 3000;
+  const DURATION_MS     = 10 * 60 * 1000; // fixed 10 minutes
+
+  /* ========= Bank code words (5-letter uppercase) ========= */
+  const WORDS = {
+    shoulder: ['LABRA','BURSA','TERES','SCAPO','ACROM','CAVUM','ROTOR','GLENO','BICIP','DELTS'],
+    elbow:    ['ULNAE','RADII','OLECR','CUBIT','BRACH','PRONA','SUPIN','FROHS','TROCH'],
+    wrist:    ['CARPI','TFCCS','GUYON','EPLIS','APBES','SCAPO','LUNAT','TRAPE','HAMAT'],
+    knee:     ['PATEL','MENIS','TIBIA','FEMUR','BURSA','PESAN','HOFAS','FIBUL'],
+    ankle:    ['ATFLS','CFLIG','PTFLS','TARSI','NAVIC','CUNEI','FHLTB','PERON'],
+    hip:      ['ILIAC','PSOAS','GLUTE','SACRO','PUBIS','FEMUR','LABRA','OBTUR'],
+    hernia:   ['FEMOR','INDIR','DIRCT','RINGS','CANAL','LACUN','ILIOP']
+  };
+  const ALL_WORDS = Object.values(WORDS).flat();
+
+  /* ========= Harder anagram helpers ========= */
+  function scrambleRaw(phrase){
+    const letters = phrase.toUpperCase().replace(/[^A-Z]/g,'').split('');
+    if (letters.length < 2) return phrase.toUpperCase();
+    const out = letters.slice();
+    do {
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+    } while (out.join('') === letters.join(''));
+    return out.join('');
+  }
+  function scrambleDisplay(phrase){
+    const s = scrambleRaw(phrase);
+    const chunks = [];
+    for (let i = 0, flip = false; i < s.length; ){
+      const size = flip ? 3 : 4;
+      chunks.push(s.slice(i, i + size));
+      i += size; flip = !flip;
+    }
+    return chunks.join(' ');
+  }
+  const A = (word, hint='Anagram — unscramble the anatomical term.') => ({
+    type: 'anagram',
+    prompt: hint + ` <br><span class="pill" aria-label="Scrambled letters">${scrambleDisplay(word)}</span>`,
+    word,
+    answers: [word]
+  });
+
+  /* ========= Base question banks (mcq/fill) ========= */
+  const BANKS = {
+    shoulder: [
+      {type:'mcq',  prompt:'Which tendon inserts on the <b>lesser tuberosity</b>?', options:['Supraspinatus','Infraspinatus','Subscapularis','Teres minor'], answer:2},
+      {type:'mcq',  prompt:'Primary <b>external rotators</b> of the shoulder are…', options:['Subscapularis & Teres major','Infraspinatus & Teres minor','Supraspinatus & Biceps long head','Deltoid (anterior) & Pec major'], answer:1},
+      {type:'fill', prompt:'Name the fibrocartilaginous rim of the glenoid.', answers:['labrum','glenoidlabrum']},
+      {type:'fill', prompt:'Muscle that initiates abduction (~0–15°).', answers:['supraspinatus']},
+      {type:'mcq',  prompt:'The long head of biceps tendon runs within the…', options:['Spinoglenoid notch','Bicipital (intertubercular) groove','Coracoclavicular interval','Quadrilateral space'], answer:1}
+    ],
+    elbow: [
+      {type:'fill', prompt:'Common extensor tendon originates from the <i>_____ epicondyle</i>.', answers:['lateral']},
+      {type:'fill', prompt:'Distal biceps inserts onto the <i>radial _____</i>.', answers:['tuberosity']},
+      {type:'mcq',  prompt:'The posterior interosseous nerve (PIN) passes through the…', options:['Arcade of Frohse / Supinator','Pronator quadratus','Cubital tunnel retinaculum','Anconeus'], answer:0},
+      {type:'mcq',  prompt:'Ulnar nerve at the elbow sits…', options:['Within the bicipital aponeurosis','Anterior to medial epicondyle','Posterior to medial epicondyle (cubital tunnel)','Between brachialis & brachioradialis'], answer:2},
+      {type:'fill', prompt:'Shared origin of wrist/finger <b>flexors</b> is the <i>_____ epicondyle</i>.', answers:['medial']}
+    ],
+    wrist: [
+      {type:'fill', prompt:'Lister’s tubercle is a pulley for <i>extensor _____ longus</i>.', answers:['pollicislongus','epl','pollicis']},
+      {type:'mcq',  prompt:'De Quervain’s involves…', options:['APL & EPB','ECRB & ECRL','EDC & EDM','FDS & FDP'], answer:0},
+      {type:'fill', prompt:'The <b>TFCC</b> stands for the triangular <i>_____</i> complex.', answers:['fibrocartilage','fibro-cartilage','fibro cartilage']},
+      {type:'mcq',  prompt:'Median nerve compression in CTS occurs beneath the…', options:['Guyon’s canal','Transverse carpal ligament (flexor retinaculum)','Pisohamate ligament','Interosseous membrane'], answer:1},
+      {type:'fill', prompt:'Hook of hamate lies ulnar to the <i>_____</i> bone.', answers:['pisiform']}
+    ],
+    knee: [
+      {type:'fill', prompt:'Patellar tendon inserts on the tibial <i>_____</i>.', answers:['tuberosity']},
+      {type:'mcq',  prompt:'The pes anserinus is formed by…', options:['Semimembranosus, semitendinosus, biceps femoris','Sartorius, gracilis, semitendinosus','Rectus femoris, vastus medialis, vastus lateralis','Popliteus, plantaris, gastrocnemius'], answer:1},
+      {type:'fill', prompt:'A Baker’s cyst is a distension of the <i>_____–_____</i> bursa.', answers:['semimembranosusgastrocnemius','gastrocnemiussemimembranosus']},
+      {type:'fill', prompt:'Hoffa’s fat pad is the <i>_____</i> infrapatellar fat pad.', answers:['deep']},
+      {type:'mcq',  prompt:'The lateral collateral ligament attaches to the…', options:['Fibular head','Medial femoral condyle','Tibial tuberosity','Patella'], answer:0}
+    ],
+    ankle: [
+      {type:'fill', prompt:'The tendon under the sustentaculum tali is <i>_____</i>.', answers:['fhl','flexorhallucislongus','flexorhallucis']},
+      {type:'mcq',  prompt:'ATFL connects…', options:['Fibula → Navicular','Fibula → Talus (anterior)','Tibia → Talus (posterior)','Fibula → Calcaneus'], answer:1},
+      {type:'fill', prompt:'Peroneus brevis inserts at base of the 5th metatarsal <i>_____</i>.', answers:['tuberosity','styloid']},
+      {type:'mcq',  prompt:'Tarsal tunnel roof is the…', options:['Spring ligament','Flexor retinaculum','Deltoid ligament','Interosseous membrane'], answer:1},
+      {type:'fill', prompt:'Spring ligament supports the head of the <i>_____</i>.', answers:['talus']}
+    ],
+    hip: [
+      {type:'fill', prompt:'Trendelenburg gait indicates weakness of <i>gluteus _____</i>.', answers:['medius']},
+      {type:'mcq',  prompt:'The <b>iliopsoas</b> tendon passes…', options:['Posterior to hip joint','Anterior to hip joint','Within the obturator canal','Through the greater sciatic notch'], answer:1},
+      {type:'fill', prompt:'Main blood supply to femoral head (adult) via the <i>_____ circumflex</i> femoral artery.', answers:['medial']},
+      {type:'fill', prompt:'Origin of long head of biceps femoris is the <i>_____ tuberosity</i>.', answers:['ischial']},
+      {type:'mcq',  prompt:'Rectus femoris direct head originates from…', options:['ASIS','AIIS','Iliac crest','Pubic tubercle'], answer:1}
+    ],
+    hernia: [
+      {type:'mcq',  prompt:'An <b>indirect</b> inguinal hernia lies _____ to the inferior epigastric vessels.', options:['Medial','Lateral'], answer:1},
+      {type:'mcq',  prompt:'A <b>femoral</b> hernia neck is located…', options:['Above inguinal ligament','Below inguinal ligament, medial to femoral vein','Below inguinal ligament, lateral to lacunar ligament, medial to femoral vein','Within Hesselbach’s triangle'], answer:2},
+      {type:'fill', prompt:'Deep inguinal ring is an opening in the transversalis fascia <i>_____</i> to the inferior epigastric vessels.', answers:['lateral']},
+      {type:'fill', prompt:'Hesselbach’s triangle boundaries include inguinal ligament (inferior), rectus abdominis (medial), and <i>_____</i> epigastric vessels (lateral).', answers:['inferior']},
+      {type:'mcq',  prompt:'Best manoeuvre to accentuate groin hernias on US.', options:['Resisted adduction','Valsalva / cough','Passive hip internal rotation','Toe walking'], answer:1}
+    ]
+  };
+
+  /* ========= Tough MSK anagrams (injected into banks) ========= */
+  const HARD_ANAGRAMS = {
+    shoulder: [
+      'acromioclavicular', 'glenohumeral', 'suprascapular',
+      'subscapularis', 'infraspinatus', 'coracoclavicular'
+    ],
+    elbow: [
+      'interosseous membrane', 'annular ligament', 'cubital tunnel',
+      'posterior interosseous nerve', 'bicipitoradial bursa', 'supinator'
+    ],
+    wrist: [
+      'scapholunate', 'lunotriquetral', 'extensor retinaculum',
+      'triangular fibrocartilage complex', 'flexor retinaculum'
+    ],
+    knee: [
+      'semimembranosus', 'gastrocnemius', 'meniscofemoral ligament',
+      'anterolateral ligament', 'popliteus tendon', 'patellofemoral'
+    ],
+    ankle: [
+      'calcaneofibular', 'anterior talofibular', 'posterior talofibular',
+      'plantar calcaneonavicular', 'sustentaculum tali', 'deltoid ligament'
+    ],
+    hip: [
+      'iliofemoral', 'ischiofemoral', 'pubofemoral',
+      'obturator externus', 'acetabular labrum', 'lesser trochanter'
+    ],
+    hernia: [
+      'hesselbach triangle', 'transversalis fascia', 'inferior epigastric',
+      'lacunar ligament', 'femoral canal'
+    ]
+  };
+  function upgradeAnagrams(){
+    for (const bankId of Object.keys(HARD_ANAGRAMS)){
+      const pruned = (BANKS[bankId] || []).filter(q =>
+        !(q.type === 'anagram' && ((q.word || '').replace(/[^A-Za-z]/g,'').length < 7))
+      );
+      const adds = HARD_ANAGRAMS[bankId].map(w => A(w));
+      BANKS[bankId] = pruned.concat(adds);
+    }
+  }
+  upgradeAnagrams();
+
+  /* ========= State ========= */
+  const state = {
+    bankId: 'random',
+    puzzles: [],
+    step: 0,
+    attempts: 0,
+    letters: [],
+    word: 'SONIC',
+    lettersMap: [],
+    deadline: 0,
+    locked: false,
+    finalAttempts: 0
+  };
+
+  /* ========= Audio (synth with optional file override) ========= */
+  const AudioCtl = (()=> {
+    let ctx, master, lp, osc, beatOsc, beatGain, noise, noiseGain;
+    let intervalId = null; let volume = 1;
+    const useFileIfPresent = async ()=>{
+      const el = qs('#bgm'); if (!el) return false;
+      if (!el.src || !/assets\/audio\/creepy\.mp3$/.test(el.src)) return false;
+      try{ await el.play(); el.volume = 0.7; return true; }catch{ return false; }
+    };
+    const startSynth = ()=>{
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      master = ctx.createGain(); master.gain.value = 0.9 * volume; master.connect(ctx.destination);
+      lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 250; lp.connect(master);
+      osc = ctx.createOscillator(); osc.type='sawtooth'; osc.frequency.value = 55;
+      const droneGain = ctx.createGain(); droneGain.gain.value = 0.08; osc.connect(droneGain).connect(lp); osc.start();
+      beatOsc = ctx.createOscillator(); beatOsc.type='sine'; beatOsc.frequency.value = 60;
+      beatGain = ctx.createGain(); beatGain.gain.value = 0.0; beatOsc.connect(beatGain).connect(lp); beatOsc.start();
+      const pulse = ()=>{ const t = ctx.currentTime; beatGain.gain.cancelScheduledValues(t); beatGain.gain.setValueAtTime(0.0, t); beatGain.gain.linearRampToValueAtTime(0.6, t+0.02); beatGain.gain.exponentialRampToValueAtTime(0.01, t+0.35); };
+      const buffer = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const data = buffer.getChannelData(0);
+      for (let i=0;i<data.length;i++){ data[i] = (Math.random()*2-1) * (i/data.length); }
+      noise = ctx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
+      noiseGain = ctx.createGain(); noiseGain.gain.value = 0.03; noise.connect(noiseGain).connect(lp); noise.start();
+      intervalId = setInterval(pulse, 800);
+    };
+    const start = async ()=>{ const used = await useFileIfPresent(); if (!used) startSynth(); };
+    const stop  = ()=>{ const el = qs('#bgm'); if (el && !el.paused){ el.pause(); el.currentTime = 0; }
+      if (intervalId){ clearInterval(intervalId); intervalId=null; }
+      if (master){ try{ const now = (ctx?ctx.currentTime:0); master.gain.cancelScheduledValues(now); master.gain.setTargetAtTime(0, now, 0.25); }catch{} }
+    };
+    const mute  = (m)=>{ const el = qs('#bgm'); if (el) el.muted = m; if (master) master.gain.value = 0.9 * (m?0:1); };
+    return { start, stop, mute };
+  })();
+
+  /* ========= Core logic ========= */
+  function labelForBank(id){
+    return {
+      shoulder:'Shoulder', elbow:'Elbow / Forearm', wrist:'Wrist / Hand',
+      knee:'Knee', ankle:'Ankle / Foot', hip:'Hip / Pelvis', hernia:'Hip / Groin Hernias'
+    }[id] || id;
+  }
+  function chooseBank(id){
+    const keys = Object.keys(BANKS);
+    const chosen = (id==='random') ? pick(keys) : id;
+    state.bankId = chosen;
+    qs('#bankName').textContent = (id==='random') ? `Random → ${labelForBank(chosen)}` : labelForBank(chosen);
+  }
+  // Guarantee ≥1 anagram in each draw of 5
+  function samplePuzzlesFrom(bankId){
+    const pool = (BANKS[bankId] || []).slice();
+    if (!pool.length) return [];
+    const anas   = pool.filter(q => q.type === 'anagram');
+    const others = pool.filter(q => q.type !== 'anagram');
+    if (anas.length === 0) return shuffle(pool).slice(0, PUZZLES_PER_RUN);
+    const pickOne = anas[Math.floor(Math.random() * anas.length)];
+    const restPool = shuffle([...others, ...anas.filter(a => a !== pickOne)]);
+    const take = [pickOne, ...restPool.slice(0, Math.max(0, PUZZLES_PER_RUN - 1))];
+    return shuffle(take);
+  }
+  function newWordFor(bankId){
+    const list = WORDS[bankId] && WORDS[bankId].length ? WORDS[bankId] : ALL_WORDS;
+    let w = pick(list); if (!w || w.length!==5){ w = pick(ALL_WORDS); }
+    state.word = w.toUpperCase();
+    state.lettersMap = state.word.split('');
+  }
+  function revealLetter(letter){
+    const fx = document.createElement('div');
+    fx.className = 'letterFlash';
+    fx.innerHTML = `<div class="bubble" role="status" aria-live="polite">${letter}</div>`;
+    document.body.appendChild(fx);
+    setTimeout(()=> fx.remove(), LETTER_SHOW_MS + 250);
+  }
+  function fmt(ms){ const s = Math.max(0, Math.floor(ms/1000)); const m = String(Math.floor(s/60)).padStart(2,'0'); const ss= String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+  function showScreen(id){ ['welcome','puzzle','padlock','success','locked'].forEach(k=>{ qs(`#screen-${k}`).style.display = (k===id)?'block':'none'; }); }
+  function resetGame(){
+    state.puzzles = []; state.step = 0; state.attempts = 0; state.letters = [];
+    state.locked = false; state.finalAttempts = 0;
+    qs('#progress').textContent = `1 / ${PUZZLES_PER_RUN}`;
+    qs('#attemptsLeft').textContent = 3; qs('#time').textContent = '10:00';
+    showScreen('welcome');
+  }
+
+  /* ========= Timer ========= */
+  let tickId = null;
+  function startTimer(){
+    state.deadline = Date.now() + DURATION_MS;
+    qs('#time').textContent = fmt(DURATION_MS);
+    if (tickId) clearInterval(tickId);
+    tickId = setInterval(()=>{
+      const left = state.deadline - Date.now();
+      qs('#time').textContent = fmt(left);
+      if (left<=0){ clearInterval(tickId); hardLock('⏰ Time is up — the game has locked.'); }
+    }, 250);
+  }
+  function stopTimer(){ if (tickId) clearInterval(tickId); }
+
+  /* ========= Rendering ========= */
+  function renderPuzzle(){
+    const p = state.puzzles[state.step];
+    qs('#progress').textContent = `${state.step+1} / ${PUZZLES_PER_RUN}`;
+    qs('#pTitle').innerHTML = `Card ${state.step+1}`;
+    const area = qs('#pBody'); area.innerHTML = '';
+    qs('#pFeedback').innerHTML = '';
+    qs('#next').style.display = 'none';
+    qs('#submit').style.display = 'inline-block';
+    qs('#attemptsLeft').textContent = String(3 - state.attempts);
+    if (!p){ showPadlock(); return; }
+
+    if (p.type==='mcq'){
+      const wrap = document.createElement('div'); wrap.className='mcq';
+      const stem = document.createElement('div'); stem.innerHTML = `<p style="font-weight:700">${p.prompt}</p>`;
+      wrap.appendChild(stem);
+      p.options.forEach((opt, i)=>{
+        const id = `opt_${i}`;
+        const lab = document.createElement('label'); lab.className='opt'; lab.setAttribute('for', id);
+        lab.innerHTML = `<input type="radio" name="opt" id="${id}" value="${i}"> ${opt}`;
+        wrap.appendChild(lab);
+      });
+      area.appendChild(wrap);
+    } else if (p.type==='fill'){
+      const stem = document.createElement('div'); stem.innerHTML = `<p style="font-weight:700">${p.prompt}</p>`;
+      const inp = document.createElement('input'); inp.type='text'; inp.id='freeText'; inp.placeholder='Type your answer';
+      area.appendChild(stem); area.appendChild(inp);
+    } else if (p.type==='anagram'){
+      const stem = document.createElement('div');
+      stem.innerHTML = `<p style="font-weight:700">${p.prompt}</p>`;
+      const inp = document.createElement('input'); inp.type='text'; inp.id='freeText'; inp.placeholder='Unscramble here';
+      area.appendChild(stem); area.appendChild(inp);
+    } else {
+      area.innerHTML = '<p>Unknown question type.</p>';
+    }
+  }
+
+  function showPadlock(){
+    showScreen('padlock');
+    qs('#padMsg').innerHTML = '';
+    const left = Math.max(0, state.deadline - Date.now());
+    qs('#timeLeft').textContent = fmt(left);
+  }
+
+  /* ========= Evaluation & flow ========= */
+  function evaluate(){
+    const p = state.puzzles[state.step]; if (!p) return false;
+    if (p.type==='mcq'){
+      const checked = qs('input[name="opt"]:checked'); return !!checked && Number(checked.value) === p.answer;
+    }
+    if (p.type==='fill' || p.type==='anagram'){
+      const el = qs('#freeText'); if (!el) return false;
+      const val = normalize(el.value);
+      return (p.answers || [p.word]).some(ans => normalize(ans)===val);
+    }
+    return false;
+  }
+  function flashMsg(kind, text){ qs('#pFeedback').innerHTML = `<div class="msg ${kind}">${text}</div>`; }
+  function nextStep(){ state.step++; state.attempts = 0; if (state.step>=PUZZLES_PER_RUN){ showPadlock(); } else { renderPuzzle(); } }
+  function hardLock(reason){ state.locked = true; stopTimer(); AudioCtl.stop(); qs('#lockReason').textContent = reason || 'Locked.'; showScreen('locked'); }
+
+  /* ========= Events ========= */
+  qs('#start').addEventListener('click', async ()=>{
+    await AudioCtl.start();
+    const sel = qs('#bank').value || 'random';
+    chooseBank(sel);
+    state.puzzles = samplePuzzlesFrom(state.bankId);
+    newWordFor(state.bankId);
+    state.step=0; state.attempts=0; state.letters=[];
+    startTimer(); showScreen('puzzle'); renderPuzzle();
+  });
+
+  qs('#submit').addEventListener('click', ()=>{
+    const p = state.puzzles[state.step]; if (!p) return;
+    const ok = evaluate();
+    if (ok){
+      flashMsg('good', 'Correct!');
+      const letter = state.lettersMap[state.step]; state.letters.push(letter); revealLetter(letter);
+      qs('#submit').style.display = 'none';
+      setTimeout(()=> nextStep(), LETTER_SHOW_MS);
+    } else {
+      state.attempts = clamp(state.attempts+1, 0, 3);
+      const left = 3 - state.attempts;
+      if (left<=0){ flashMsg('bad', '❌ Third miss — game locked.'); setTimeout(()=> hardLock('Too many wrong attempts on this card.'), 250); }
+      else { flashMsg('bad', `Not quite — try again. Attempts left: <b>${left}</b>`); }
+      qs('#attemptsLeft').textContent = String(left);
+    }
+  });
+
+  qs('#unlock').addEventListener('click', ()=>{
+    const code = (qs('#code').value || '').toUpperCase();
+    if (code.length!==5){ qs('#padMsg').innerHTML = `<div class="msg hint">Enter a 5-letter word.</div>`; return; }
+    if (code === state.word){ stopTimer(); AudioCtl.stop(); const left = Math.max(0, state.deadline - Date.now()); qs('#timeLeft').textContent = fmt(left); showScreen('success'); }
+    else {
+      state.finalAttempts = clamp(state.finalAttempts+1, 0, 999);
+      if (state.finalAttempts>=3){ hardLock('Too many incorrect padlock attempts.'); return; }
+      qs('#padMsg').innerHTML = `<div class="msg bad">Nope — that’s not it. (${3 - state.finalAttempts} attempts left)</div>`;
+    }
+  });
+
+  ['restart1','restart2','playAgain'].forEach(id=>{
+    qs('#'+id).addEventListener('click', ()=>{ stopTimer(); AudioCtl.stop(); resetGame(); });
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if (e.key==='Enter'){
+      if (qs('#screen-puzzle').style.display==='block') qs('#submit').click();
+      else if (qs('#screen-padlock').style.display==='block') qs('#unlock').click();
+    }
+  });
+
+  qs('#mute').addEventListener('click', (e)=>{
+    const pressed = e.currentTarget.getAttribute('aria-pressed')==='true';
+    e.currentTarget.setAttribute('aria-pressed', String(!pressed));
+    e.currentTarget.textContent = pressed ? '🔊 Sound' : '🔇 Muted';
+    AudioCtl.mute(!pressed);
+  });
+
+  // Init
+  resetGame();
+
+  /* ========= Tiny console self-tests ========= */
+  (function runTests(){
+    const log = (...a)=>console.log('%c[EscapeRoom Tests]','color:#8b7cff',...a);
+    const assert = (name, cond)=> log((cond?'✅':'❌'), name);
+    chooseBank('shoulder');
+    const sample = samplePuzzlesFrom('shoulder');
+    assert('Sample 5 puzzles', Array.isArray(sample) && sample.length===5);
+    assert('≥1 anagram in sample', sample.some(q=>q.type==='anagram'));
+    newWordFor('shoulder');
+    assert('Word is 5 letters uppercase', /^[A-Z]{5}$/.test(state.word));
+    const s1 = scrambleRaw('acetabular labrum'); assert('Scramble differs', s1 !== 'ACETABULARLABRUM');
+    // Simulate card lock math:
+    state.step=0; state.attempts=2; assert('3rd attempt locks', (3 - (state.attempts+1))===0);
+  })();
+
+})();</script>
+</body>
+</html>
