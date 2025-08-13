@@ -74,6 +74,7 @@
         <div class="brand pill">🩻 MSK Anatomy Escape room</div>
         <div class="pill"><strong>Timer:</strong> <span id="time" class="timer">10:00</span></div>
         <div class="pill"><strong>Bank:</strong> <span id="bankName">—</span></div>
+        <div class="pill"><strong>Mode:</strong> <span id="modeName">Regular</span></div>
       </div>
       <button id="mute" class="btn muter" aria-pressed="false" title="Mute / Unmute">🔊 Sound</button>
     </header>
@@ -103,15 +104,23 @@
                 <label>Duration</label>
                 <div class="pill">Fixed at <strong>10:00</strong></div>
               </div>
+              <div>
+                <label>Mode</label>
+                <div class="row" role="group" aria-label="Mode">
+                  <label class="pill" style="cursor:pointer"><input type="radio" name="mode" value="regular" checked> Regular</label>
+                  <label class="pill" style="cursor:pointer"><input type="radio" name="mode" value="hard"> Hard</label>
+                </div>
+                <div class="footer">Regular skews easier; Hard skews harder. Anagrams ≤ 2 total.</div>
+              </div>
             </div>
             <div class="footer">Optional track: add <code>assets/audio/creepy.mp3</code> (royalty-free). Otherwise a built-in tense synth plays.</div>
           </div>
           <div class="card">
             <h2>How it works</h2>
             <ul>
-              <li>Each run draws five random questions from a larger pool (guaranteed ≥1 <b>anagram</b>).</li>
-              <li>Every correct answer reveals a letter for 3 seconds.</li>
-              <li>Assemble the final 5-letter word to unlock the padlock.</li>
+              <li>Each run draws 5 random questions across difficulties.</li>
+              <li>Regular aims for ~1 anagram; Hard aims for up to 2 (cap ≤ 2).</li>
+              <li>Every correct answer flashes a letter for 3 seconds. No recap at the end.</li>
               <li>Time expires or 3 wrong tries on a card ⇒ hard lock.</li>
             </ul>
             <div class="center">
@@ -197,7 +206,8 @@
   /* ========= Config ========= */
   const PUZZLES_PER_RUN = 5;
   const LETTER_SHOW_MS  = 3000;
-  const DURATION_MS     = 10 * 60 * 1000; // fixed 10 minutes
+  const DURATION_MS     = 10 * 60 * 1000;
+  const ANA_CAP         = 2; // <= 2 anagrams per game
 
   /* ========= Bank code words (5-letter uppercase) ========= */
   const WORDS = {
@@ -211,7 +221,7 @@
   };
   const ALL_WORDS = Object.values(WORDS).flat();
 
-  /* ========= Harder anagram helpers ========= */
+  /* ========= Anagram helpers ========= */
   function scrambleRaw(phrase){
     const letters = phrase.toUpperCase().replace(/[^A-Z]/g,'').split('');
     if (letters.length < 2) return phrase.toUpperCase();
@@ -294,7 +304,7 @@
     ]
   };
 
-  /* ========= Tough MSK anagrams (injected into banks) ========= */
+  /* ========= Hard anagrams (long/multi-word) ========= */
   const HARD_ANAGRAMS = {
     shoulder: [
       'acromioclavicular', 'glenohumeral', 'suprascapular',
@@ -330,15 +340,131 @@
       const pruned = (BANKS[bankId] || []).filter(q =>
         !(q.type === 'anagram' && ((q.word || '').replace(/[^A-Za-z]/g,'').length < 7))
       );
-      const adds = HARD_ANAGRAMS[bankId].map(w => A(w));
+      const adds = HARD_ANAGRAMS[bankId].map(w => {
+        const q = A(w, 'Anagram — unscramble the anatomical structure.');
+        q.diff = 'hard';
+        return q;
+      });
       BANKS[bankId] = pruned.concat(adds);
     }
   }
+
+  /* ========= Easy anagrams (single-word, easier) ========= */
+  const ANA_EASY = {
+    shoulder: ['labrum','bursa','acromion','deltoid','teres','scapula'],
+    elbow:    ['ulna','radius','olecranon','pronator','supinator'],
+    wrist:    ['hamate','pisiform','scaphoid','lunate','trapezium'],
+    knee:     ['patella','fibula','tibia','meniscus','bursa'],
+    ankle:    ['talus','calcaneus','navicular','cuneiform'],
+    hip:      ['iliacus','psoas','pubis','acetabulum','gluteus'],
+    hernia:   ['inguinal','femoral','canal','ring']
+  };
+  function injectEasyAnagrams(){
+    for (const bankId of Object.keys(ANA_EASY)){
+      const adds = (ANA_EASY[bankId]||[]).map(w => {
+        const q = A(w, 'Anagram — unscramble the anatomical term.');
+        q.diff = 'easy';
+        return q;
+      });
+      BANKS[bankId] = (BANKS[bankId]||[]).concat(adds);
+    }
+  }
+
+  /* ========= Hard non-anagram questions per bank ========= */
+  const BANKS_HARD = {
+    shoulder: [
+      {type:'mcq',  diff:'hard', prompt:'Nerve through the quadrangular (quadrilateral) space?', options:['Radial','Axillary','Suprascapular','Musculocutaneous'], answer:1},
+      {type:'fill', diff:'hard', prompt:'Roof of the suprascapular notch is the superior _____ scapular ligament.', answers:['transverse','superiortransverse']}
+    ],
+    elbow: [
+      {type:'mcq',  diff:'hard', prompt:'Which nerve passes between the two heads of pronator teres?', options:['Ulnar','Median','Radial','Anterior interosseous'], answer:1},
+      {type:'fill', diff:'hard', prompt:'Another name for the bicipital aponeurosis is the _____ fibrosus.', answers:['lacertus','lacertusfibrosus']}
+    ],
+    wrist: [
+      {type:'fill', diff:'hard', prompt:'Interosseous ligament between scaphoid and lunate is the _____–_____ ligament.', answers:['scapholunate','scaphoidlunate','scapholunateinterosseous']},
+      {type:'mcq',  diff:'hard', prompt:'EPL tendon runs in which dorsal extensor compartment?', options:['1st','2nd','3rd','4th'], answer:2}
+    ],
+    knee: [
+      {type:'mcq',  diff:'hard', prompt:'Posterior meniscofemoral ligament is also called the ligament of…', options:['Humphrey','Wrisberg','Gerdy','Weitbrecht'], answer:1},
+      {type:'fill', diff:'hard', prompt:'The anterior meniscofemoral ligament is the ligament of _____', answers:['humphrey','humphry']}
+    ],
+    ankle: [
+      {type:'mcq',  diff:'hard', prompt:'Most medial tendon in the tarsal tunnel (behind medial malleolus) is…', options:['FHL','FDS','Tibialis posterior','Peroneus longus'], answer:2},
+      {type:'fill', diff:'hard', prompt:'The “spring ligament” is the plantar _____ ligament.', answers:['calcaneonavicular','plantarcalcaneonavicular']}
+    ],
+    hip: [
+      {type:'mcq',  diff:'hard', prompt:'Which ligament is strongest and resists hip extension?', options:['Ischiofemoral','Pubofemoral','Iliofemoral','Ligamentum teres'], answer:2},
+      {type:'fill', diff:'hard', prompt:'The obturator externus tendon passes _____ to the femoral neck.', answers:['posterior','post']}
+    ],
+    hernia: [
+      {type:'mcq',  diff:'hard', prompt:'Medial border of the femoral ring is formed by the…', options:['Inguinal ligament','Lacunar ligament','Pectineal (Cooper’s) ligament','Femoral vein'], answer:1},
+      {type:'fill', diff:'hard', prompt:'Hernias within Hesselbach’s triangle are classified as _____ inguinal hernias.', answers:['direct']}
+    ]
+  };
+  function injectHardQuestions(){
+    for (const bankId of Object.keys(BANKS_HARD)){
+      const adds = (BANKS_HARD[bankId]||[]).map(q => ({...q, diff: q.diff || 'hard'}));
+      BANKS[bankId] = (BANKS[bankId]||[]).concat(adds);
+    }
+  }
+
+  /* ========= Difficulty tagging & dedupe ========= */
+  function lettersLen(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,'').length; }
+  function inferDiff(q){
+    if (q.type === 'anagram'){
+      const L = lettersLen(q.word || '');
+      return (/\s/.test(q.word||'') || L >= 11) ? 'hard' : (L >= 7 ? 'medium' : 'easy');
+    }
+    if (q.diff) return q.diff;
+    if (q.type === 'mcq')  return 'easy';
+    if (q.type === 'fill') return 'medium';
+    return 'medium';
+  }
+  function tagDifficulties(){
+    for (const bankId of Object.keys(BANKS)){
+      BANKS[bankId].forEach(q => { if (!q.diff) q.diff = inferDiff(q); });
+    }
+  }
+  function dedupeBanks(){
+    for (const bankId of Object.keys(BANKS)){
+      const seenPrompt = new Set();
+      const seenAna = new Set();
+      BANKS[bankId] = (BANKS[bankId]||[]).filter(q => {
+        if (q.type === 'anagram'){
+          const k = (q.word||'').toLowerCase().replace(/[^a-z]/g,'');
+          if (seenAna.has(k)) return false; seenAna.add(k); return true;
+        }
+        const k = (q.type||'')+'|'+(q.prompt||'').toLowerCase().trim();
+        if (seenPrompt.has(k)) return false; seenPrompt.add(k); return true;
+      });
+    }
+  }
+
+  // Inject & prepare banks
   upgradeAnagrams();
+  injectEasyAnagrams();
+  injectHardQuestions();
+  dedupeBanks();
+  tagDifficulties();
+
+  /* ========= Mode policy (different complexity mixes) ========= */
+  const MODE_POLICY = {
+    regular: {
+      desired: { easy: 2, medium: 3, hard: 0 }, // skew easier
+      anaMin: 1,  // will be 0 if bank has none
+      anaMax: 1   // regular caps at 1 anagram
+    },
+    hard: {
+      desired: { easy: 0, medium: 2, hard: 3 }, // skew harder
+      anaMin: 1,
+      anaMax: 2   // hard can include up to 2 anagrams
+    }
+  };
 
   /* ========= State ========= */
   const state = {
     bankId: 'random',
+    mode: 'regular',  // 'regular' | 'hard'
     puzzles: [],
     step: 0,
     attempts: 0,
@@ -350,7 +476,7 @@
     finalAttempts: 0
   };
 
-  /* ========= Audio (synth with optional file override) ========= */
+  /* ========= Audio ========= */
   const AudioCtl = (()=> {
     let ctx, master, lp, osc, beatOsc, beatGain, noise, noiseGain;
     let intervalId = null; let volume = 1;
@@ -396,43 +522,60 @@
     state.bankId = chosen;
     qs('#bankName').textContent = (id==='random') ? `Random → ${labelForBank(chosen)}` : labelForBank(chosen);
   }
-  // Guarantee ≥1 anagram in each draw of 5
-  function samplePuzzlesFrom(bankId){
-  const pool = (BANKS[bankId] || []).slice();
-  if (!pool.length) return [];
 
-  const anas   = pool.filter(q => q.type === 'anagram');
-  const others = pool.filter(q => q.type !== 'anagram');
+  // Complexity-aware sampler with anagram caps per mode
+  function samplePuzzlesFrom(bankId, mode){
+    const pool = (BANKS[bankId] || []).slice();
+    if (!pool.length) return [];
 
-  // No anagrams in this bank → plain random 5
-  if (anas.length === 0) return shuffle(pool).slice(0, PUZZLES_PER_RUN);
+    const policy = MODE_POLICY[mode] || MODE_POLICY.regular;
 
-  // Cap anagrams at 2, but ensure at least 1 if available
-  const anaPick = shuffle(anas).slice(0, Math.min(2, anas.length));
-  const othersNeeded = Math.max(0, PUZZLES_PER_RUN - anaPick.length);
-  let take = [...anaPick, ...shuffle(others).slice(0, othersNeeded)];
+    const anas    = pool.filter(q => q.type === 'anagram');
+    const nonAna  = pool.filter(q => q.type !== 'anagram');
 
-  // Fallbacks to guarantee 5 cards:
-  if (take.length < PUZZLES_PER_RUN){
-    // Try unused non-anagrams first
-    const remainingOthers = others.filter(x => !take.includes(x));
-    take = take.concat(shuffle(remainingOthers).slice(0, PUZZLES_PER_RUN - take.length));
-  }
-  if (take.length < PUZZLES_PER_RUN){
-    // Absolute last resort: top up from any remaining items.
-    // May exceed the 2-anagram cap only if the bank lacks enough non-anagram items.
-    const remainingAny = pool.filter(x => !take.includes(x));
-    const extra = shuffle(remainingAny).slice(0, PUZZLES_PER_RUN - take.length);
-    if (extra.some(q => q.type === 'anagram') && anaPick.length + extra.filter(q=>q.type==='anagram').length > 2){
-      console.warn('[EscapeRoom] Needed to exceed 2 anagrams to reach 5 puzzles (limited bank variety).');
+    const anaAvail = anas.length;
+    const anaMin   = Math.min(policy.anaMin, anaAvail);
+    const anaMax   = Math.min(policy.anaMax, ANA_CAP, anaAvail);
+    let   anaWant  = clamp(anaMax, anaMin, anaMax); // aim for upper bound (1 regular, 2 hard if available)
+
+    const anaHard = anas.filter(q => (q.diff||inferDiff(q)) === 'hard');
+    const anaNotHard = anas.filter(q => (q.diff||inferDiff(q)) !== 'hard');
+    const anaPick = (mode === 'hard'
+                      ? shuffle([...anaHard, ...anaNotHard])
+                      : shuffle([...anaNotHard, ...anaHard])
+                    ).slice(0, anaWant);
+
+    const bins = {
+      easy:   shuffle(nonAna.filter(q => (q.diff||inferDiff(q)) === 'easy')),
+      medium: shuffle(nonAna.filter(q => (q.diff||inferDiff(q)) === 'medium')),
+      hard:   shuffle(nonAna.filter(q => (q.diff||inferDiff(q)) === 'hard'))
+    };
+
+    const need = {...policy.desired};
+    anaPick.forEach(q => { const d = (q.diff||inferDiff(q)); need[d] = Math.max(0, (need[d]||0) - 1); });
+
+    const picked = [...anaPick];
+
+    for (const lvl of ['hard','medium','easy']){
+      const want = Math.min(need[lvl]||0, bins[lvl].length);
+      picked.push(...bins[lvl].splice(0, want));
     }
-    take = take.concat(extra);
+
+    if (picked.length < PUZZLES_PER_RUN){
+      const leftovers = shuffle([...bins.easy, ...bins.medium, ...bins.hard]);
+      picked.push(...leftovers.slice(0, PUZZLES_PER_RUN - picked.length));
+    }
+
+    let currentAnas = picked.filter(q=>q.type==='anagram').length;
+    if (picked.length < PUZZLES_PER_RUN && currentAnas < ANA_CAP){
+      const remainingAnas = anas.filter(q => !anaPick.includes(q));
+      const canAdd = Math.min(ANA_CAP - currentAnas, PUZZLES_PER_RUN - picked.length);
+      picked.push(...shuffle(remainingAnas).slice(0, canAdd));
+    }
+
+    return shuffle(picked).slice(0, PUZZLES_PER_RUN);
   }
 
-  return shuffle(take);
-}
-
-  }
   function newWordFor(bankId){
     const list = WORDS[bankId] && WORDS[bankId].length ? WORDS[bankId] : ALL_WORDS;
     let w = pick(list); if (!w || w.length!==5){ w = pick(ALL_WORDS); }
@@ -453,6 +596,7 @@
     state.locked = false; state.finalAttempts = 0;
     qs('#progress').textContent = `1 / ${PUZZLES_PER_RUN}`;
     qs('#attemptsLeft').textContent = 3; qs('#time').textContent = '10:00';
+    qs('#modeName').textContent = (state.mode==='hard'?'Hard':'Regular');
     showScreen('welcome');
   }
 
@@ -534,10 +678,15 @@
   /* ========= Events ========= */
   qs('#start').addEventListener('click', async ()=>{
     await AudioCtl.start();
-    const sel = qs('#bank').value || 'random';
-    chooseBank(sel);
-    state.puzzles = samplePuzzlesFrom(state.bankId);
+    const selBank = qs('#bank').value || 'random';
+    const selMode = (qs('input[name="mode"]:checked')?.value) || 'regular';
+    state.mode = selMode;
+    qs('#modeName').textContent = selMode==='hard' ? 'Hard' : 'Regular';
+
+    chooseBank(selBank);
+    state.puzzles = samplePuzzlesFrom(state.bankId, state.mode);
     newWordFor(state.bankId);
+
     state.step=0; state.attempts=0; state.letters=[];
     startTimer(); showScreen('puzzle'); renderPuzzle();
   });
@@ -595,15 +744,23 @@
   (function runTests(){
     const log = (...a)=>console.log('%c[EscapeRoom Tests]','color:#8b7cff',...a);
     const assert = (name, cond)=> log((cond?'✅':'❌'), name);
-    chooseBank('shoulder');
-    const sample = samplePuzzlesFrom('shoulder');
-    assert('Sample 5 puzzles', Array.isArray(sample) && sample.length===5);
-    assert('≥1 anagram in sample', sample.some(q=>q.type==='anagram'));
+
+    const cntAnas = arr => arr.filter(q=>q.type==='anagram').length;
+
+    const R = samplePuzzlesFrom('shoulder','regular');
+    const H = samplePuzzlesFrom('shoulder','hard');
+
+    assert('Regular draws 5', R.length===5);
+    assert('Hard draws 5', H.length===5);
+    assert('Regular anagrams ≤2', cntAnas(R) <= 2);
+    assert('Hard anagrams ≤2', cntAnas(H) <= 2);
+
     newWordFor('shoulder');
     assert('Word is 5 letters uppercase', /^[A-Z]{5}$/.test(state.word));
-    const s1 = scrambleRaw('acetabular labrum'); assert('Scramble differs', s1 !== 'ACETABULARLABRUM');
-    // Simulate card lock math:
-    state.step=0; state.attempts=2; assert('3rd attempt locks', (3 - (state.attempts+1))===0);
+
+    const scr = scrambleRaw('acetabular labrum'); assert('Anagram scramble differs', scr !== 'ACETABULARLABRUM');
+
+    state.step=0; state.attempts=2; assert('3rd attempt locks (math)', (3 - (state.attempts+1))===0);
   })();
 
 })();</script>
